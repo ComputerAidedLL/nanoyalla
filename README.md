@@ -1,4 +1,4 @@
-# This is NanoYalla version 1.1.3
+# This is NanoYalla version 1.1.4
 
 Two different installations are possible which differ only on the treatement of cuts.
 If you have the [Yalla library v2.0.2](https://perso.ens-lyon.fr/olivier.laurent/yalla/) installed, you can use the *Yalla installation* below.
@@ -14,7 +14,7 @@ If you do not want to rely on Yalla, you can use the *Yalla-free installation* w
 
 ## Yalla-free Installation
 
-*tested with Coq >= 8.10*
+*tested with Coq >= 8.12*
 
     $ ./configure
     $ make

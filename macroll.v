@@ -1,22 +1,24 @@
-From Coq Require Import Lia.
+From Coq Require Import List PeanoNat Compare_dec.
 From NanoYalla Require Export nanoll.
 
 Export List.ListNotations.
 
+Set Implicit Arguments.
+
 
 (** * Informative / Transparent versions of list operations *)
 
-Lemma app_assoc_inf {A} (l m n : list A) : l ++ m ++ n = (l ++ m) ++ n.
+Lemma app_assoc_inf A (l m n : list A) : l ++ m ++ n = (l ++ m) ++ n.
 Proof. now induction l; cbn; f_equal. Defined.
 
-Lemma map_length_inf {A B} (f : A -> B) l : length (map f l) = length l.
+Lemma map_length_inf A B (f : A -> B) l : length (map f l) = length l.
 Proof. induction l; cbn; auto. Defined.
 
 
 (** * Permutations *)
 
 (* Transpose elements of index n and S n in l *)
-Fixpoint transpS {A} n (l : list A) :=
+Fixpoint transpS A n (l : list A) :=
   match n, l with
   | 0, x :: y :: r => y :: x :: r
   | S n, x :: r => x :: transpS n r
@@ -24,16 +26,16 @@ Fixpoint transpS {A} n (l : list A) :=
   end.
 
 (* Transpose elements of index n and S (n + m) in l *)
-Fixpoint transp {A} n m (l : list A) :=
+Fixpoint transp A n m (l : list A) :=
   match m with
   | 0 => transpS n l
   | S m => transpS n (transp (S n) m (transpS n l))
   end.
 
 (* Apply list of transpositions described as a [list (option nat)]:
-   [Some k0;...; Some kn] means (n, n + S kn) o ... o (0, S k0)
+   [Some k0; ...; Some kn] means (n, n + S kn) o ... o (0, S k0)
    and None is "no permutation at this position" *)
-Fixpoint transpL {A} s (l : list A) :=
+Fixpoint transpL A s (l : list A) :=
   match s with
   | Some k :: s => match transp 0 k l with
                    | x :: r => x :: transpL s r
@@ -53,7 +55,7 @@ Definition permL_of_perm : list nat -> list (option nat).
 Proof.
 intros p.
 remember (length p) as n eqn:Heqn.
-revert p Heqn; induction n as [|n IHn]; intros p Heqn.
+induction n as [|n IHn] in p, Heqn |- *.
 - exact nil.
 - destruct p as [|[|x] p]; inversion Heqn as [Hn].
   + rewrite <- (map_length_inf pred) in Hn.
@@ -64,50 +66,46 @@ Defined.
 
 (* Properties *)
 
-Lemma transpS_lt {A} n (l : list A) : S n < length l ->
+Lemma transpS_lt A n (l : list A) : S n < length l ->
  {'(l1, l2, a, b) | (l = l1 ++ a :: b :: l2 /\ length l1 = n) & transpS n l = l1 ++ b :: a :: l2}.
 Proof.
-revert l; induction n as [|n IHn]; cbn; intros l Hl.
+induction n as [|n IHn] in l |- *; cbn; intros Hl.
 - destruct l as [|a [|b l]]; cbn in Hl; try (now exfalso; inversion Hl).
   now exists (nil, l, a, b).
 - destruct l as [|a l]; cbn in Hl; try (now exfalso; inversion Hl).
-  destruct (IHn l) as [[[[l1 l2] b] c] [-> Hl1] ->]; [lia|].
+  destruct (IHn l) as [[[[l1 l2] b] c] [-> Hl1] ->]; [now apply <- Nat.succ_lt_mono in Hl|].
   now exists (a :: l1, l2, b, c); split; cbn; subst.
 Defined.
 
-Lemma transpS_overflow {A} n (l : list A) :
+Lemma transpS_overflow A n (l : list A) :
   length l <= S n -> transpS n l = l.
 Proof.
-revert l; induction n as [|n IHn]; cbn; intros l Hl.
+induction n as [|n IHn] in l |- *; cbn; intros Hl.
 - destruct l as [|a [|b l]]; auto.
   now exfalso; inversion Hl.
 - destruct l as [|a l]; auto.
-  now rewrite <- (IHn l) at 2; [|cbn in Hl; lia].
+  now rewrite <- (IHn l) at 2; [| apply <- Nat.succ_le_mono in Hl].
 Defined.
 
-Lemma transpS_compute {A} l1 (a b : A) l2 :
+Lemma transpS_compute A l1 (a b : A) l2 :
   transpS (length l1) (l1 ++ a :: b :: l2) = l1 ++ b :: a :: l2.
 Proof.
-destruct (transpS_lt (length l1) (l1 ++ a :: b :: l2)) as [[[[l1' l2'] c] d] [Heq Hl] ->].
-- induction l1; cbn; lia.
-- revert l1' Heq Hl; induction l1 as [|h l1 IHl1]; cbn; intros [|a' l1'] Heq Hl; inversion Heq;
+destruct (@transpS_lt _ (length l1) (l1 ++ a :: b :: l2)) as [[[[l1' l2'] c] d] [Heq Hl] ->].
+- now induction l1; apply -> Nat.succ_lt_mono; [ apply Nat.lt_0_succ | ].
+- induction l1 as [|h l1 IHl1] in l1', Heq, Hl |- *; cbn; destruct l1' as [|a' l1']; inversion Heq;
     try easy.
   inversion Hl; subst.
   now cbn; f_equal; apply IHl1.
 Defined.
 
-Lemma transp_cons {A} a b x (l : list A) :
+Lemma transp_cons A a b x (l : list A) :
   transp (S a) b (x :: l) = x :: transp a b l.
-Proof.
-revert a l; induction b as [|b IHb]; intros a l; auto.
-now cbn; rewrite (IHb (S a)).
-Defined.
+Proof. now induction b as [|b IHb] in a, l |- *; [| cbn; rewrite (IHb (S a)) ]. Defined.
 
-Lemma transp_app_tl {A} l0 a b (l : list A) :
+Lemma transp_app_tl A l0 a b (l : list A) :
   transp (length l0 + a) b (l0 ++ l) = l0 ++ transp a b l.
 Proof.
-revert a l; induction l0 as [|x l0 IHl0]; cbn; intros a l; auto.
-now rewrite transp_cons, <- IHl0.
+now induction l0 as [|x l0 IHl0] in a, l |- *; [| cbn; rewrite transp_cons, <- IHl0 ].
 Defined.
 
 (* Extended exchange rules *)
@@ -115,7 +113,7 @@ Defined.
 Lemma ex_transpS n l : ll l -> ll (transpS n l).
 Proof.
 intros pi.
-destruct (Compare_dec.le_lt_dec (length l) (S n)) as [Hle|Hlt].
+destruct (le_lt_dec (length l) (S n)) as [Hle|Hlt].
 - now rewrite transpS_overflow.
 - apply transpS_lt in Hlt as [[[[l1 l2] b] c] [-> _] ->].
   now apply ex_t_r.
@@ -123,7 +121,7 @@ Defined.
 
 Lemma ex_transp n m l : ll l -> ll (transp n m l).
 Proof.
-revert n l; induction m as [|m IHm]; intros n l pi.
+induction m as [|m IHm] in n, l |- *; intros pi.
 - now apply ex_transpS.
 - now apply ex_transpS, IHm, ex_transpS.
 Defined.
@@ -131,7 +129,7 @@ Defined.
 Lemma ex_transp_middle1 l1 l2 l3 A :
   ll (l1 ++ A :: l2 ++ l3) -> ll (l1 ++ l2 ++ A :: l3).
 Proof.
-revert l1; induction l2 as [|a l2 IHl2]; cbn; intros l1; auto.
+induction l2 as [|a l2 IHl2] in l1 |- *; cbn; auto.
 intros pi.
 replace (l1 ++ a :: l2 ++ A :: l3)
    with ((l1 ++ a :: nil) ++ l2 ++ A :: l3)
@@ -144,7 +142,7 @@ Defined.
 Lemma ex_transp_middle2 l1 l2 l3 A :
   ll (l1 ++ l2 ++ A :: l3) -> ll (l1 ++ A :: l2 ++ l3).
 Proof.
-revert l1; induction l2 as [|a l2 IHl2]; cbn; intros l1; auto.
+induction l2 as [|a l2 IHl2] in l1 |- *; cbn; auto.
 intros pi.
 replace (l1 ++ a :: l2 ++ A :: l3)
    with ((l1 ++ a :: nil) ++ l2 ++ A :: l3) in pi
@@ -158,7 +156,7 @@ Lemma ex_transpL s l : ll l -> ll (transpL s l).
 Proof.
 enough (forall l0, ll (l0 ++ l) -> ll (l0 ++ transpL s l)) as Hs
   by now intros pi; apply (Hs nil).
-revert l; induction s as [|[n|] s IHs]; cbn; intros l l0 pi; auto.
+induction s as [|[n|] s IHs] in l |- *; cbn; intros l0 pi; auto.
 - remember (transp 0 n l) as lt eqn:Heqlt.
   destruct lt as [|f lt]; auto.
   replace (l0 ++ f :: transpL s lt) with ((l0 ++ f :: nil) ++ transpL s lt)

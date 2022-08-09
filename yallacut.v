@@ -132,12 +132,11 @@ Qed.
 
 Lemma cut_r A l1 l2 : ll (A :: l1) -> ll (dual A :: l2) -> ll (l1 ++ l2).
 Proof.
-intros pi1 pi2.
+intros pi1%nll2llfrag pi2%nll2llfrag.
 apply llfrag2nll.
 rewrite map_app.
 eapply ll_cut.cut_r_axfree.
-- intros a ; destruct a.
-- apply nll2llfrag in pi2.
-  cbn in pi2; rewrite <- nll2ll_dual in pi2; eassumption.
-- apply nll2llfrag in pi1; eassumption.
+- intros a; destruct a.
+- cbn in pi2; rewrite <- nll2ll_dual in pi2; eassumption.
+- assumption.
 Qed.
