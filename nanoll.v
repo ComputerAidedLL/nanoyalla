@@ -1,7 +1,7 @@
 Open Scope list_scope.
 
 (* Same definition as [List.map] *)
-Definition map [A B : Type] (f : A -> B) :=
+Definition map [A B] (f : A -> B) :=
   fix map l := match l with
                | nil => nil
                | a :: t => f a :: map t
@@ -18,7 +18,6 @@ Inductive formula :=
 | zero | top
 | aplus (_ _ : formula) | awith (_ _ : formula)
 | oc (_ : formula) | wn (_ : formula).
-
 
 (** Rules *)
 Inductive ll : list formula -> Type :=
