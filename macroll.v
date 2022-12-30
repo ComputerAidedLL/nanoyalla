@@ -262,10 +262,10 @@ Lemma tens_r_ext l1 A B l2 :
 Proof.
 intros pi1 pi2.
 apply (ex_transp_middle1 nil); cbn.
-apply tens_r; auto.
+apply tens_r; [ | assumption ].
 apply (ex_transp_middle2 nil) in pi1.
-replace (l1 ++ nil) with l1 in pi1; trivial.
-induction l1; intuition.
+replace (l1 ++ nil) with l1 in pi1 by (rewrite app_nil_r; reflexivity).
+exact pi1.
 Defined.
 
 Lemma parr_r_ext l1 A B l2 :
