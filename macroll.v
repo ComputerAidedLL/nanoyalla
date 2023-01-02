@@ -9,10 +9,10 @@ Set Implicit Arguments.
 (** * Informative / Transparent versions of list operations *)
 
 Lemma app_assoc_inf A (l m n : list A) : l ++ m ++ n = (l ++ m) ++ n.
-Proof. now induction l; cbn; f_equal. Defined.
+Proof. induction l; cbn; f_equal. assumption. Defined.
 
 Lemma map_length_inf A B (f : A -> B) l : length (map f l) = length l.
-Proof. induction l; cbn; auto. Defined.
+Proof. induction l as [|a l IHl]; cbn; [ | rewrite IHl ]; reflexivity. Defined.
 
 
 (** * Permutations *)
@@ -70,43 +70,41 @@ Lemma transpS_lt A n (l : list A) : S n < length l ->
  {'(l1, l2, a, b) | (l = l1 ++ a :: b :: l2 /\ length l1 = n) & transpS n l = l1 ++ b :: a :: l2}.
 Proof.
 induction n as [|n IHn] in l |- *; cbn; intros Hl.
-- destruct l as [|a [|b l]]; cbn in Hl; try (now exfalso; inversion Hl).
-  now exists (nil, l, a, b).
-- destruct l as [|a l]; cbn in Hl; try (now exfalso; inversion Hl).
-  destruct (IHn l) as [[[[l1 l2] b] c] [-> Hl1] ->]; [now apply <- Nat.succ_lt_mono in Hl|].
-  now exists (a :: l1, l2, b, c); split; cbn; subst.
+- destruct l as [|a [|b l]]; cbn in Hl; [ exfalso; inversion Hl | exfalso; exact (Nat.lt_irrefl _ Hl) | ].
+  exists (nil, l, a, b); repeat split.
+- destruct l as [|a l]; cbn in Hl; [ exfalso; inversion Hl | ].
+  destruct (IHn l) as [[[[l1 l2] b] c] [-> Hl1] ->]; [ exact (proj2 (Nat.succ_lt_mono _ _) Hl) | ].
+  exists (a :: l1, l2, b, c); split; cbn; [ | subst n ]; reflexivity.
 Defined.
 
-Lemma transpS_overflow A n (l : list A) :
-  length l <= S n -> transpS n l = l.
+Lemma transpS_overflow A n (l : list A) : length l <= S n -> transpS n l = l.
 Proof.
 induction n as [|n IHn] in l |- *; cbn; intros Hl.
-- destruct l as [|a [|b l]]; auto.
-  now exfalso; inversion Hl.
-- destruct l as [|a l]; auto.
-  now rewrite <- (IHn l) at 2; [| apply <- Nat.succ_le_mono in Hl].
+- destruct l as [|a [|b l]]; [ reflexivity | reflexivity | ].
+  exfalso. inversion Hl as [|k Hl']. inversion Hl'.
+- destruct l as [|a l]; [ reflexivity | ].
+  cbn in Hl. apply <- Nat.succ_le_mono in Hl.
+  f_equal. exact (IHn l Hl).
 Defined.
 
 Lemma transpS_compute A l1 (a b : A) l2 :
   transpS (length l1) (l1 ++ a :: b :: l2) = l1 ++ b :: a :: l2.
 Proof.
 destruct (@transpS_lt _ (length l1) (l1 ++ a :: b :: l2)) as [[[[l1' l2'] c] d] [Heq Hl] ->].
-- now induction l1; apply -> Nat.succ_lt_mono; [ apply Nat.lt_0_succ | ].
+- induction l1; apply -> Nat.succ_lt_mono; [ apply Nat.lt_0_succ | ]. assumption.
 - induction l1 as [|h l1 IHl1] in l1', Heq, Hl |- *; cbn; destruct l1' as [|a' l1']; inversion Heq;
-    try easy.
-  inversion Hl; subst.
-  now cbn; f_equal; apply IHl1.
+    [ reflexivity | discriminate Hl | discriminate Hl | subst ].
+  injection Hl as [=].
+  cbn. f_equal. apply IHl1; assumption.
 Defined.
 
 Lemma transp_cons A a b x (l : list A) :
   transp (S a) b (x :: l) = x :: transp a b l.
-Proof. now induction b as [|b IHb] in a, l |- *; [| cbn; rewrite (IHb (S a)) ]. Defined.
+Proof. induction b as [|b IHb] in a, l |- *; [ | cbn; rewrite (IHb (S a)) ]; reflexivity. Defined.
 
 Lemma transp_app_tl A l0 a b (l : list A) :
   transp (length l0 + a) b (l0 ++ l) = l0 ++ transp a b l.
-Proof.
-now induction l0 as [|x l0 IHl0] in a, l |- *; [| cbn; rewrite transp_cons, <- IHl0 ].
-Defined.
+Proof. induction l0 as [|x l0 IHl0] in a, l |- *; [| cbn; rewrite transp_cons, <- IHl0 ]; reflexivity. Defined.
 
 (* Extended exchange rules *)
 
@@ -114,62 +112,58 @@ Lemma ex_transpS n l : ll l -> ll (transpS n l).
 Proof.
 intros pi.
 destruct (le_lt_dec (length l) (S n)) as [Hle|Hlt].
-- now rewrite transpS_overflow.
+- rewrite transpS_overflow; assumption.
 - apply transpS_lt in Hlt as [[[[l1 l2] b] c] [-> _] ->].
-  now apply ex_t_r.
+  apply ex_t_r, pi.
 Defined.
 
 Lemma ex_transp n m l : ll l -> ll (transp n m l).
 Proof.
 induction m as [|m IHm] in n, l |- *; intros pi.
-- now apply ex_transpS.
-- now apply ex_transpS, IHm, ex_transpS.
+- apply ex_transpS, pi.
+- apply ex_transpS, IHm, ex_transpS, pi.
 Defined.
 
-Lemma ex_transp_middle1 l1 l2 l3 A :
-  ll (l1 ++ A :: l2 ++ l3) -> ll (l1 ++ l2 ++ A :: l3).
+Lemma ex_transp_middle1 l1 l2 l3 A : ll (l1 ++ A :: l2 ++ l3) -> ll (l1 ++ l2 ++ A :: l3).
 Proof.
-induction l2 as [|a l2 IHl2] in l1 |- *; cbn; auto.
-intros pi.
+induction l2 as [|a l2 IHl2] in l1 |- *; cbn; intros pi; [ exact pi | ].
 replace (l1 ++ a :: l2 ++ A :: l3)
    with ((l1 ++ a :: nil) ++ l2 ++ A :: l3)
-  by now rewrite <- app_assoc_inf.
-apply IHl2; rewrite <- app_assoc_inf; cbn.
+  by (rewrite <- app_assoc_inf; reflexivity).
+apply IHl2. rewrite <- app_assoc_inf. cbn.
 rewrite <- transpS_compute.
-now apply (ex_transpS (length l1)).
+apply (ex_transpS (length l1)), pi.
 Defined.
 
-Lemma ex_transp_middle2 l1 l2 l3 A :
-  ll (l1 ++ l2 ++ A :: l3) -> ll (l1 ++ A :: l2 ++ l3).
+Lemma ex_transp_middle2 l1 l2 l3 A : ll (l1 ++ l2 ++ A :: l3) -> ll (l1 ++ A :: l2 ++ l3).
 Proof.
-induction l2 as [|a l2 IHl2] in l1 |- *; cbn; auto.
-intros pi.
+induction l2 as [|a l2 IHl2] in l1 |- *; cbn; intros pi; [ exact pi | ].
 replace (l1 ++ a :: l2 ++ A :: l3)
    with ((l1 ++ a :: nil) ++ l2 ++ A :: l3) in pi
-  by now rewrite <- app_assoc_inf.
-apply IHl2 in pi; rewrite <- app_assoc_inf in pi; cbn in pi.
+  by (rewrite <- app_assoc_inf; reflexivity).
+apply IHl2 in pi. rewrite <- app_assoc_inf in pi. cbn in pi.
 rewrite <- transpS_compute.
-now apply (ex_transpS (length l1)).
+apply (ex_transpS (length l1)), pi.
 Defined.
 
 Lemma ex_transpL s l : ll l -> ll (transpL s l).
 Proof.
 enough (forall l0, ll (l0 ++ l) -> ll (l0 ++ transpL s l)) as Hs
-  by now intros pi; apply (Hs nil).
-induction s as [|[n|] s IHs] in l |- *; cbn; intros l0 pi; auto.
+  by (intros pi; apply (Hs nil), pi).
+induction s as [|[n|] s IHs] in l |- *; cbn; intros l0 pi; [ exact pi | | ].
 - remember (transp 0 n l) as lt eqn:Heqlt.
-  destruct lt as [|f lt]; auto.
+  destruct lt as [|f lt]; [ exact pi | ].
   replace (l0 ++ f :: transpL s lt) with ((l0 ++ f :: nil) ++ transpL s lt)
-    by now rewrite <- app_assoc_inf.
+    by (rewrite <- app_assoc_inf; reflexivity).
   apply IHs.
-  rewrite <- app_assoc_inf; cbn.
+  rewrite <- app_assoc_inf. cbn.
   rewrite Heqlt, <- transp_app_tl.
-  now apply ex_transp.
-- destruct l as [|f l]; auto.
+  apply ex_transp, pi.
+- destruct l as [|f l]; [ exact pi | ].
   replace (l0 ++ f :: transpL s l) with ((l0 ++ f :: nil) ++ transpL s l)
-    by now rewrite <- app_assoc_inf.
+    by (rewrite <- app_assoc_inf; reflexivity).
   apply IHs.
-  now rewrite <- app_assoc_inf.
+  rewrite <- app_assoc_inf. exact pi.
 Defined.
 
 
@@ -194,8 +188,8 @@ end.
 Lemma bidual A : dual (dual A) = A.
 Proof.
 induction A as [ X | X
-               | | | A1 IHA1 A2 IHA2|A1 IHA1 A2 IHA2
-               | | | A1 IHA1 A2 IHA2|A1 IHA1 A2 IHA2
+               | | | A1 IHA1 A2 IHA2 | A1 IHA1 A2 IHA2
+               | | | A1 IHA1 A2 IHA2 | A1 IHA1 A2 IHA2
                | A1 IHA1 | A1 IHA1 ];
 cbn; rewrite ?IHA1, ?IHA2; reflexivity.
 Defined.
@@ -213,107 +207,90 @@ induction A as [ X | X
 - apply bot_r, one_r.
 - apply (ex_t_r nil), bot_r, one_r.
 - apply parr_r.
-  apply (ex_t_r (dual A1 :: nil)).
-  apply (ex_t_r nil).
+  apply (ex_t_r (dual A1 :: nil)), (ex_t_r nil).
   change (ll (tens A1 A2 :: (dual A1 :: nil) ++ dual A2 :: nil)).
-  now apply tens_r; apply (ex_t_r nil).
+  apply tens_r; apply (ex_t_r nil); assumption.
 - apply (ex_t_r nil).
   apply parr_r.
-  apply (ex_t_r (A1 :: nil)).
-  apply (ex_t_r nil).
+  apply (ex_t_r (A1 :: nil)), (ex_t_r nil).
   change (ll (tens (dual A1) (dual A2) :: (A1 :: nil) ++ A2 :: nil)).
-  now apply tens_r.
+  apply tens_r; assumption.
 - apply top_r.
 - apply (ex_t_r nil), top_r.
 - apply with_r; apply (ex_t_r nil).
-  + now apply plus_r1, (ex_t_r nil).
-  + now apply plus_r2, (ex_t_r nil).
-- apply (ex_t_r nil); apply with_r; apply (ex_t_r nil).
-  + now apply plus_r1.
-  + now apply plus_r2.
+  + apply plus_r1, (ex_t_r nil), IHA1.
+  + apply plus_r2, (ex_t_r nil), IHA2.
+- apply (ex_t_r nil), with_r; apply (ex_t_r nil).
+  + apply plus_r1, IHA1.
+  + apply plus_r2, IHA2.
 - apply (ex_t_r nil).
   change (ll (oc A1 :: map wn (dual A1 :: nil))).
-  apply oc_r; cbn.
+  apply oc_r. cbn.
   apply (ex_t_r nil).
-  now apply de_r.
+  apply de_r, IHA1.
 - change (ll (oc (dual A1) :: map wn (A1 :: nil))).
-  apply oc_r; cbn.
-  now apply (ex_t_r nil), de_r, (ex_t_r nil).
+  apply oc_r. cbn.
+  apply (ex_t_r nil), de_r, (ex_t_r nil), IHA1.
 Defined.
 
 Ltac ax_expansion :=
   now cbn;
   let Hax := fresh "Hax" in
   match goal with
-  | |- ll (?A :: ?B :: nil) =>
-         assert (Hax := ax_r_ext B); cbn in Hax; rewrite ?bidual in Hax
+  | |- ll (?A :: ?B :: nil) => assert (Hax := ax_r_ext B); cbn in Hax; rewrite ?bidual in Hax
   end.
 
 Definition one_r_ext := one_r.
 
 Lemma bot_r_ext l1 l2 : ll (l1 ++ l2) -> ll (l1 ++ bot :: l2).
-Proof. now intros; apply (ex_transp_middle1 nil), bot_r. Defined.
+Proof. intro pi. apply (ex_transp_middle1 nil), bot_r, pi. Defined.
 
 Lemma top_r_ext l1 l2 : ll (l1 ++ top :: l2).
-Proof. now apply (ex_transp_middle1 nil), top_r. Defined.
+Proof. apply (ex_transp_middle1 nil), top_r. Defined.
 
-Lemma tens_r_ext l1 A B l2 :
-  ll (l1 ++ A :: nil) -> ll (B :: l2) -> ll (l1 ++ tens A B :: l2).
+Lemma tens_r_ext l1 A B l2 : ll (l1 ++ A :: nil) -> ll (B :: l2) -> ll (l1 ++ tens A B :: l2).
 Proof.
 intros pi1 pi2.
-apply (ex_transp_middle1 nil); cbn.
-apply tens_r; [ | assumption ].
+apply (ex_transp_middle1 nil). cbn.
+apply tens_r, pi2.
 apply (ex_transp_middle2 nil) in pi1.
-replace (l1 ++ nil) with l1 in pi1 by (rewrite app_nil_r; reflexivity).
-exact pi1.
+replace (l1 ++ nil) with l1 in pi1; [ exact pi1 | ].
+clear. induction l1; [ reflexivity | ]. cbn. f_equal. assumption.
 Defined.
 
-Lemma parr_r_ext l1 A B l2 :
-  ll (l1 ++ A :: B :: l2) -> ll (l1 ++ parr A B :: l2).
+Lemma parr_r_ext l1 A B l2 : ll (l1 ++ A :: B :: l2) -> ll (l1 ++ parr A B :: l2).
 Proof.
-intros pi.
+intro pi.
 apply (ex_transp_middle1 nil), parr_r.
-now apply (ex_transp_middle2 (A :: nil)); cbn; apply (ex_transp_middle2 nil).
+apply (ex_transp_middle2 (A :: nil)). cbn. apply (ex_transp_middle2 nil), pi.
 Defined.
 
-Lemma with_r_ext l1 A B l2 :
-  ll (l1 ++ A :: l2) -> ll (l1 ++ B :: l2) -> ll (l1 ++ awith A B :: l2).
+Lemma with_r_ext l1 A B l2 : ll (l1 ++ A :: l2) -> ll (l1 ++ B :: l2) -> ll (l1 ++ awith A B :: l2).
+Proof. intros. apply (ex_transp_middle1 nil), with_r; apply (ex_transp_middle2 nil); assumption. Defined.
+
+Lemma plus_r1_ext l1 A B l2 : ll (l1 ++ A :: l2) -> ll (l1 ++ aplus A B :: l2).
+Proof. intro pi. apply (ex_transp_middle1 nil), plus_r1, (ex_transp_middle2 nil), pi. Defined.
+
+Lemma plus_r2_ext l1 A B l2 : ll (l1 ++ A :: l2) -> ll (l1 ++ aplus B A :: l2).
+Proof. intro pi. apply (ex_transp_middle1 nil), plus_r2, (ex_transp_middle2 nil), pi. Defined.
+
+Lemma oc_r_ext l1 A l2 : ll (map wn l1 ++ A :: map wn l2) -> ll (map wn l1 ++ oc A :: map wn l2).
 Proof.
-now intros; apply (ex_transp_middle1 nil), with_r; apply (ex_transp_middle2 nil).
+intros pi%(ex_transp_middle2 nil).
+apply (ex_transp_middle1 nil). cbn.
+replace (map wn l1 ++ map wn l2) with (map wn (l1 ++ l2)) in *; [ apply oc_r, pi | ].
+clear. induction l1; [ reflexivity | ]. cbn. f_equal. assumption.
 Defined.
 
-Lemma plus_r1_ext l1 A B l2 :
-  ll (l1 ++ A :: l2) -> ll (l1 ++ aplus A B :: l2).
-Proof. now intros; apply (ex_transp_middle1 nil), plus_r1, (ex_transp_middle2 nil). Defined.
+Lemma de_r_ext l1 A l2 : ll (l1 ++ A :: l2) -> ll (l1 ++ wn A :: l2).
+Proof. intro pi. apply (ex_transp_middle1 nil), de_r, (ex_transp_middle2 nil), pi. Defined.
 
-Lemma plus_r2_ext l1 A B l2 :
-  ll (l1 ++ A :: l2) -> ll (l1 ++ aplus B A :: l2).
-Proof. now intros; apply (ex_transp_middle1 nil), plus_r2, (ex_transp_middle2 nil). Defined.
+Lemma wk_r_ext l1 A l2 : ll (l1 ++ l2) -> ll (l1 ++ wn A :: l2).
+Proof. intro pi. apply (ex_transp_middle1 nil), wk_r, pi. Defined.
 
-Lemma oc_r_ext l1 A l2 :
-  ll (map wn l1 ++ A :: map wn l2) -> ll (map wn l1 ++ oc A :: map wn l2).
+Lemma co_r_ext l1 A l2 : ll (l1 ++ wn A :: wn A :: l2) -> ll (l1 ++ wn A :: l2).
 Proof.
-intros pi.
-apply (ex_transp_middle2 nil) in pi.
-apply (ex_transp_middle1 nil); cbn.
-replace (map wn l1 ++ map wn l2) with (map wn (l1 ++ l2)) in *; [now apply oc_r| ].
-now clear; induction l1 as [|? ? IHl1]; cbn; rewrite ? IHl1.
-Defined.
-
-Lemma de_r_ext l1 A l2 :
-  ll (l1 ++ A :: l2) -> ll (l1 ++ wn A :: l2).
-Proof. now intros; apply (ex_transp_middle1 nil), de_r, (ex_transp_middle2 nil). Defined.
-
-Lemma wk_r_ext l1 A l2 :
-  ll (l1 ++ l2) -> ll (l1 ++ wn A :: l2).
-Proof. now intros; apply (ex_transp_middle1 nil), wk_r. Defined.
-
-Lemma co_r_ext l1 A l2 :
-  ll (l1 ++ wn A :: wn A :: l2) -> ll (l1 ++ wn A :: l2).
-Proof.
-intros pi.
-apply (ex_transp_middle1 nil), co_r.
-now apply (ex_transp_middle2 (wn A :: nil)), (ex_transp_middle2 nil l1).
+intro pi. apply (ex_transp_middle1 nil), co_r, (ex_transp_middle2 (wn A :: nil)), (ex_transp_middle2 nil l1), pi.
 Defined.
 
 Ltac cbn_sequent := cbn beta iota delta[app map dual]; rewrite ?bidual.
