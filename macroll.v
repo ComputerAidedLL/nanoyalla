@@ -300,7 +300,7 @@ Bind Scope ll_scope with formula.
 Open Scope ll_scope.
 
 Module LLNotations.
-  Notation "⊢" := (ll nil) (format "⊢") : ll_scope.
+  Notation "⊢" := (ll nil) (at level 85, format "⊢") : ll_scope.
   Notation "⊢ x" := (ll (cons x nil)) (at level 85) : ll_scope.
   Notation "⊢ x , y , .. , z" := (ll (cons x (cons y .. (cons z nil) ..))) (at level 85) : ll_scope.
   Infix "⊗" := tens (at level 40) : ll_scope.
@@ -313,5 +313,5 @@ Module LLNotations.
   Notation "⟂" := bot : ll_scope.
   Notation "0" := zero : ll_scope.
   Notation "⊤" := top : ll_scope.
-  Notation "A ^" := (dual A) (at level 12, format "A ^") : ll_scope.
+  Notation "A ^" := (dual A) (at level 30, format "A ^") : ll_scope.
 End LLNotations.
