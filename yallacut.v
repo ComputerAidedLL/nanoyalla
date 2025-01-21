@@ -1,6 +1,11 @@
 From Yalla Require Import List_more Permutation_Type_more ll_fragments.
 From NanoYalla Require Export macroll.
 
+Set Mangle Names. Set Mangle Names Light.
+Set Default Goal Selector "!".
+Set Default Proof Using "Type".
+Set Implicit Arguments.
+
 Lemma ex_Permutation_Type l1 l2 : Permutation_Type l1 l2 -> ll l1 -> ll l2.
 Proof. apply (Permutation_Type_rect_transp (fun l1 l2 => ll l1 -> ll l2)); auto using ex_t_r. Qed.
 
@@ -43,20 +48,18 @@ Qed.
 
 Lemma nll2llfrag l : ll l -> ll_fragments.ll_ll (map nll2ll l).
 Proof.
-intros pi.
-induction pi as [ | l1 l2 A B ? IH | | | A B l1 l2 ? IH1 ? IH2 | | | | | | | | | ];
-  try (now constructor); rewrite ? map_app.
+intro pi. induction pi as [ | l1 l2 A B ? IH | | | A B l1 l2 ? IH1 ? IH2 | | | | | | | | | ];
+  try (now constructor); cbn; rewrite ? map_app.
 - apply (ll_def.ex_r _ _ _ IH).
   rewrite map_app. apply Permutation_Type_app_head, Permutation_Type_swap.
-- cbn. rewrite map_app. apply (ll_def.tens_r _ _ _ _ _ IH2 IH1).
-- cbn. rewrite nll2ll_map_wn. apply ll_def.oc_r.
+- apply (ll_def.tens_r _ _ _ _ _ IH2 IH1).
+- rewrite nll2ll_map_wn. apply ll_def.oc_r.
   rewrite <- nll2ll_map_wn. assumption.
 Qed.
 
 Lemma llfrag2nll l : ll_fragments.ll_ll (map nll2ll l) -> ll l.
 Proof.
-remember (map nll2ll l) as l0 eqn:Heql0.
-intros pi.
+remember (map nll2ll l) as l0 eqn:Heql0. intro pi.
 induction pi as [ | l1 l2 pi IH HP | l1 lw lw' l2 pi IH HP | Hf | Hf | | l1 pi IH
                 | A B l1 l2 pi1 IH1 pi2 IH2 | A B l1 pi IH |
                 | A B l1 pi IH | A B l1 pi IH | A B l1 pi1 IH1 pi2 IH2
@@ -69,12 +72,12 @@ induction pi as [ | l1 l2 pi IH HP | l1 lw lw' l2 pi IH HP | Hf | Hf | | l1 pi I
   destruct D; inversion H4. subst.
   apply ax_r.
 - apply Permutation_Type_map_inv in HP as [l' Heq HP%Permutation_Type_sym].
-  apply (ex_Permutation_Type _ _ HP), IH, Heq.
+  apply (ex_Permutation_Type HP), IH, Heq.
 - change map with List.map in Heql0.
-  symmetry in Heql0. decomp_map_inf Heql0. subst. symmetry in Heql0.
-  cbn in Heql0. apply nll2ll_map_wn_inv in Heql0. destruct Heql0 as [l [-> ->]].
+  symmetry in Heql0. decomp_map Heql0 eqn:Heql. subst. symmetry in Heql. cbn in Heql.
+  apply nll2ll_map_wn_inv in Heql as [l [-> ->]].
   apply Permutation_Type_map_inv in HP as [l' -> HP].
-  apply (ex_Permutation_Type (l3 ++ map wn l' ++ l6));
+  apply (@ex_Permutation_Type (l1 ++ map wn l' ++ l2));
     [ | apply IH; rewrite <- nll2ll_map_wn, <- ? map_app; reflexivity ].
   symmetry.
   apply Permutation_Type_app_head, Permutation_Type_app_tail, Permutation_Type_map, HP.
@@ -87,7 +90,7 @@ induction pi as [ | l1 l2 pi IH HP | l1 lw lw' l2 pi IH HP | Hf | Hf | | l1 pi I
   apply bot_r, IH. assumption.
 - destruct l as [|C l]; inversion Heql0 as [[H1 H2]].
   destruct C; inversion H1.
-  change map with List.map in H2; symmetry in H2; decomp_map_inf H2; subst.
+  change map with List.map in H2; symmetry in H2; decomp_map H2; subst.
   apply tens_r; [ apply IH2 | apply IH1 ]; reflexivity.
 - destruct l as [|C l]; inversion Heql0 as [[H1 ->]].
   destruct C; inversion H1. subst.

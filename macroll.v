@@ -3,16 +3,19 @@ From NanoYalla Require Export nanoll.
 
 Export List.ListNotations.
 
+Set Mangle Names. Set Mangle Names Light.
+Set Default Goal Selector "!".
+Set Default Proof Using "Type".
 Set Implicit Arguments.
 
 
 (** * Informative / Transparent versions of list operations *)
 
 Lemma app_assoc_inf A (l m n : list A) : l ++ m ++ n = (l ++ m) ++ n.
-Proof. induction l; cbn; f_equal. assumption. Defined.
+Proof. induction l; cbn; [ reflexivity | f_equal; assumption ]. Defined.
 
-Lemma map_length_inf A B (f : A -> B) l : length (map f l) = length l.
-Proof. induction l as [|a l IHl]; cbn; [ | rewrite IHl ]; reflexivity. Defined.
+Lemma length_map_inf A B (f : A -> B) l : length (map f l) = length l.
+Proof. induction l; cbn; [ reflexivity | f_equal; assumption ]. Defined.
 
 
 (** * Permutations *)
@@ -58,13 +61,13 @@ remember (length p) as n eqn:Heqn.
 induction n as [|n IHn] in p, Heqn |- *.
 - exact nil.
 - destruct p as [|[|x] p]; inversion Heqn as [Hn].
-  + rewrite <- (map_length_inf pred) in Hn.
+  + rewrite <- (length_map_inf pred) in Hn.
     exact (None :: IHn _ Hn).
-  + rewrite <- (map_length_inf (fun k => if Nat.eqb k 0 then x else pred k) p) in Hn.
+  + rewrite <- (length_map_inf (fun k => if Nat.eqb k 0 then x else pred k) p) in Hn.
     exact (Some x :: IHn _ Hn).
 Defined.
 
-(* Properties *)
+(** ** Properties *)
 
 Lemma transpS_lt A n (l : list A) : S n < length l ->
  {'(l1, l2, a, b) | (l = l1 ++ a :: b :: l2 /\ length l1 = n) & transpS n l = l1 ++ b :: a :: l2}.
@@ -106,7 +109,7 @@ Lemma transp_app_tl A l0 a b (l : list A) :
   transp (length l0 + a) b (l0 ++ l) = l0 ++ transp a b l.
 Proof. induction l0 as [|x l0 IHl0] in a, l |- *; [| cbn; rewrite transp_cons, <- IHl0 ]; reflexivity. Defined.
 
-(* Extended exchange rules *)
+(** ** Extended exchange rules *)
 
 Lemma ex_transpS n l : ll l -> ll (transpS n l).
 Proof.
