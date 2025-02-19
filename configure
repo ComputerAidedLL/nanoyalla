@@ -5,4 +5,4 @@ then
 else
     cp axiomcut.v nanollcut.v;
 fi;
-coq_makefile -f _CoqProject -o Makefile
+rocq makefile -f _RocqProject -o Makefile

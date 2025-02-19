@@ -1,9 +1,9 @@
-From Coq Require Import List PeanoNat Compare_dec.
+From Stdlib Require Import List PeanoNat Compare_dec.
 From NanoYalla Require Export nanoll.
 
 Export List.ListNotations.
 
-Set Mangle Names. Set Mangle Names Light.
+(* Set Mangle Names. Set Mangle Names Light. *)
 Set Default Goal Selector "!".
 Set Default Proof Using "Type".
 Set Implicit Arguments.

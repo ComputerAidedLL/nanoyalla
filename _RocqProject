@@ -1,4 +1,5 @@
 -R . NanoYalla
+# -arg "-mangle-names '__'"
 
 nanoll.v
 macroll.v
